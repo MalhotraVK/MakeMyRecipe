@@ -1,10 +1,9 @@
 """Configuration management for MakeMyRecipe application."""
 
-import os
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from pydantic import Field, ConfigDict
+from pydantic import ConfigDict, Field
 from pydantic_settings import BaseSettings
 
 
@@ -52,7 +51,7 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize settings and create necessary directories."""
         super().__init__(**kwargs)
         self._create_directories()

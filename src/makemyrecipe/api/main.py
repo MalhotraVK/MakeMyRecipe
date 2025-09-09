@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..core.config import settings
-from ..core.logging import setup_logging, get_logger
+from ..core.logging import get_logger, setup_logging
 
 # Set up logging
 setup_logging()
@@ -31,7 +31,7 @@ def create_app() -> FastAPI:
 
     # Health check endpoint
     @app.get("/health")
-    async def health_check():
+    async def health_check() -> dict:
         """Health check endpoint."""
         return {
             "status": "healthy",
@@ -41,7 +41,7 @@ def create_app() -> FastAPI:
 
     # Root endpoint
     @app.get("/")
-    async def root():
+    async def root() -> dict:
         """Root endpoint."""
         return {
             "message": f"Welcome to {settings.app_name}!",
@@ -60,7 +60,7 @@ app = create_app()
 def main() -> None:
     """Main entry point for running the application."""
     import uvicorn
-    
+
     logger.info(f"Starting {settings.app_name} server...")
     uvicorn.run(
         "makemyrecipe.api.main:app",
