@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from ..core.config import settings
 from ..core.logging import get_logger, setup_logging
 from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
-from .routes import chat, websocket
+from .routes import chat, recipe, websocket
 
 # Set up logging
 setup_logging()
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(chat.router)
+    app.include_router(recipe.router)
     app.include_router(websocket.router)
 
     # Health check endpoint

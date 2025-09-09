@@ -8,6 +8,15 @@ from .chat import (
     ConversationList,
     WebSocketMessage,
 )
+from .recipe import (
+    CuisineRecipeRequest,
+    IngredientSuggestionRequest,
+    RecipeMetadataResponse,
+    RecipeRecommendationContext,
+    RecipeResponse,
+    RecipeSearchRequest,
+    RecipeSearchResponse,
+)
 
 __all__ = [
     "ChatMessage",
@@ -16,4 +25,11 @@ __all__ = [
     "Conversation",
     "ConversationList",
     "WebSocketMessage",
+    "CuisineRecipeRequest",
+    "IngredientSuggestionRequest",
+    "RecipeMetadataResponse",
+    "RecipeRecommendationContext",
+    "RecipeResponse",
+    "RecipeSearchRequest",
+    "RecipeSearchResponse",
 ]
