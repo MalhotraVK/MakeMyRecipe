@@ -22,20 +22,6 @@ The API will be available at:
 - API documentation: http://localhost:8000/docs
 - Health check: http://localhost:8000/health
 
-# Repository Structure
-
-- `/src/makemyrecipe/`: Main application code
-  - `/api/`: FastAPI routes and endpoints
-  - `/core/`: Core functionality (config, logging)
-  - `/models/`: Data models and database schemas
-  - `/utils/`: Utility functions
-- `/tests/`: Test suite
-  - `/unit/`: Unit tests
-  - `/integration/`: Integration tests
-- `/config/`: Configuration files
-- `/data/`: Database and data files (gitignored)
-- `/docs/`: Documentation
-- `/scripts/`: Utility scripts
 
 # Tech Stack
 
