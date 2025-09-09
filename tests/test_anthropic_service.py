@@ -209,7 +209,54 @@ class TestAnthropicService:
         assert call_args[1]["model"] == "claude-sonnet-4-20250514"
         assert call_args[1]["max_tokens"] == 2000
         assert call_args[1]["temperature"] == 0.7
-        assert "tools" in call_args[1]
+        # With the new architecture, initial call doesn't include tools
+        # Tools are only used in separate search calls when search tags are detected
+        assert "tools" not in call_args[1]
+
+    @pytest.mark.asyncio
+    @patch("src.makemyrecipe.services.anthropic_service.settings")
+    async def test_generate_recipe_response_without_web_search(
+        self, mock_settings, sample_messages
+    ):
+        """Test recipe response generation without web search tools."""
+        # Setup mock settings
+        mock_settings.anthropic_model = "claude-sonnet-4-20250514"
+        mock_settings.anthropic_max_tokens = 2000
+        mock_settings.anthropic_temperature = 0.7
+        mock_settings.anthropic_rate_limit_rpm = 50
+
+        # Create mock response
+        mock_response = MagicMock()
+        mock_text_block = MagicMock()
+        mock_text_block.text = "Here's a pasta recipe without web search!"
+        mock_response.content = [mock_text_block]
+
+        # Create mock client
+        mock_client = AsyncMock()
+        mock_client.messages.create.return_value = mock_response
+
+        # Create service and set mock client
+        service = AnthropicService()
+        service.client = mock_client
+
+        # Call with use_web_search=False
+        response, citations = await service.generate_recipe_response(
+            sample_messages, use_web_search=False
+        )
+
+        assert isinstance(response, str)
+        assert "pasta recipe" in response.lower()
+        assert isinstance(citations, list)
+
+        # Verify client was called with correct parameters
+        mock_client.messages.create.assert_called_once()
+        call_args = mock_client.messages.create.call_args
+        assert call_args[1]["model"] == "claude-sonnet-4-20250514"
+        assert call_args[1]["max_tokens"] == 2000
+        assert call_args[1]["temperature"] == 0.7
+        # Should not have tools parameter when web search is disabled
+        # This prevents the 400 error that occurred when tools=None was passed
+        assert "tools" not in call_args[1]
 
     def test_extract_response_content_text_only(self, anthropic_service):
         """Test extracting content from response with text only."""
