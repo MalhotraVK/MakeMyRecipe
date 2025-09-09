@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..core.config import settings
 from ..core.logging import get_logger, setup_logging
+from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
+from .routes import chat, websocket
 
 # Set up logging
 setup_logging()
@@ -18,7 +20,13 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         description="An LLM-based chat application for recipe recommendations",
         debug=settings.api_debug,
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
+
+    # Add middleware
+    app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # Add CORS middleware
     app.add_middleware(
@@ -28,6 +36,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Include routers
+    app.include_router(chat.router)
+    app.include_router(websocket.router)
 
     # Health check endpoint
     @app.get("/health")
@@ -47,6 +59,8 @@ def create_app() -> FastAPI:
             "message": f"Welcome to {settings.app_name}!",
             "version": settings.app_version,
             "docs": "/docs",
+            "redoc": "/redoc",
+            "websocket": "/ws/chat/{user_id}",
         }
 
     logger.info(f"Created {settings.app_name} v{settings.app_version}")
