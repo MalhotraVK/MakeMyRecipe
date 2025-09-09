@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -48,7 +49,7 @@ class AnthropicService:
         }
 
     def _create_recipe_system_prompt(self) -> str:
-        """Create a system prompt optimized for recipe queries."""
+        """Create a system prompt optimized for recipe queries with search tag support."""
         return (
             "You are MakeMyRecipe, an expert culinary AI assistant "
             "specializing in recipe recommendations and cooking guidance.\n\n"
@@ -59,17 +60,73 @@ class AnthropicService:
             "- Offering cooking tips and techniques\n"
             "- Finding recipes based on available ingredients\n"
             "- Recommending recipes from specific cuisines or dietary preferences\n\n"
-            "When users ask for recipes:\n"
-            "1. Use web search to find authentic, well-reviewed recipes from "
-            "reputable cooking sites\n"
-            "2. Always include source links and citations for recipes\n"
-            "3. Provide complete ingredient lists with measurements\n"
-            "4. Include step-by-step cooking instructions\n"
-            "5. Mention cooking time, prep time, and serving size\n"
-            "6. Suggest variations or substitutions when relevant\n\n"
+            "IMPORTANT SEARCH INSTRUCTIONS:\n"
+            "When you need to search for recipes or cooking information, you must use search tags.\n"
+            "Format your search queries using: <search>your search query here</search>\n\n"
+            "Examples of when to use search tags:\n"
+            "- User asks for a specific recipe: <search>authentic Italian carbonara recipe</search>\n"
+            "- User wants recipes with ingredients: <search>chicken breast recipes with garlic and herbs</search>\n"
+            "- User asks about cooking techniques: <search>how to properly sear steak cooking technique</search>\n"
+            "- User wants cuisine-specific recipes: <search>traditional Thai pad thai recipe</search>\n\n"
+            "Search query guidelines:\n"
+            "- Include specific ingredients, cuisine types, or cooking methods\n"
+            "- Add terms like 'recipe', 'cooking', 'technique' for better results\n"
+            "- Focus on reputable cooking sites (allrecipes, food network, serious eats, etc.)\n"
+            "- Be specific about dietary restrictions or preferences\n\n"
+            "After searching, always:\n"
+            "1. Provide complete ingredient lists with precise measurements\n"
+            "2. Include detailed step-by-step cooking instructions\n"
+            "3. Mention prep time, cook time, and serving size\n"
+            "4. Include source citations with clickable links\n"
+            "5. Suggest variations or substitutions when relevant\n"
+            "6. Provide cooking tips and techniques for best results\n\n"
             "Focus on providing practical, actionable cooking advice with "
             "verified information from reliable sources."
         )
+
+    def _extract_search_queries(self, text: str) -> List[str]:
+        """Extract search queries from <search></search> tags."""
+        pattern = r'<search>(.*?)</search>'
+        matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
+        return [match.strip() for match in matches if match.strip()]
+
+    def _remove_search_tags(self, text: str) -> str:
+        """Remove search tags from text."""
+        pattern = r'<search>.*?</search>'
+        return re.sub(pattern, '', text, flags=re.DOTALL | re.IGNORECASE).strip()
+
+    async def _perform_search(self, query: str) -> Tuple[str, List[Dict[str, Any]]]:
+        """Perform a web search using Anthropic's search API."""
+        if not self.client:
+            logger.warning("Anthropic client not available for search")
+            return "", []
+
+        try:
+            # Create a search-focused message
+            search_message = ChatMessage(
+                role="user", 
+                content=f"Search for: {query}"
+            )
+            
+            # Use the web search tool
+            claude_messages = self._convert_messages([search_message])
+            
+            response = await self.client.messages.create(
+                model=settings.anthropic_model,
+                max_tokens=settings.anthropic_max_tokens,
+                temperature=0.1,  # Lower temperature for search
+                system="You are a web search assistant. Search for the requested information and provide relevant results.",
+                messages=claude_messages,
+                tools=[self._get_web_search_tool()],
+            )
+
+            # Extract search results
+            content, citations = self._extract_response_content(response)
+            return content, citations
+
+        except Exception as e:
+            logger.error(f"Error performing search: {e}")
+            return f"Search error: {str(e)}", []
 
     async def generate_recipe_response(
         self,
@@ -78,7 +135,7 @@ class AnthropicService:
         use_web_search: bool = True,
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """
-        Generate a recipe response using Claude with optional web search.
+        Generate a recipe response using Claude with search tag detection.
 
         Returns:
             Tuple of (response_content, citations)
@@ -98,26 +155,70 @@ class AnthropicService:
             if not system_prompt:
                 system_prompt = self._create_recipe_system_prompt()
 
-            # Prepare tools
-            tools = [self._get_web_search_tool()] if use_web_search else []
-
-            # Generate response
-            response = await self.client.messages.create(
+            # First, generate initial response without web search to detect search tags
+            initial_response = await self.client.messages.create(
                 model=settings.anthropic_model,
                 max_tokens=settings.anthropic_max_tokens,
                 temperature=settings.anthropic_temperature,
                 system=system_prompt,
                 messages=claude_messages,
-                tools=tools if tools else None,
+                tools=None,  # No tools for initial response
             )
 
-            # Extract content and citations
-            content, citations = self._extract_response_content(response)
+            # Extract initial content
+            initial_content, _ = self._extract_response_content(initial_response)
+            
+            # Check for search tags
+            search_queries = self._extract_search_queries(initial_content)
+            all_citations = []
+            search_results_content = ""
 
-            # Update rate limiter
-            self._rate_limiter.update_usage()
+            if search_queries and use_web_search:
+                logger.info(f"Found {len(search_queries)} search queries: {search_queries}")
+                
+                # Perform searches for each query
+                for query in search_queries:
+                    search_content, search_citations = await self._perform_search(query)
+                    search_results_content += f"\n\nSearch results for '{query}':\n{search_content}"
+                    all_citations.extend(search_citations)
 
-            return content, citations
+                # Remove search tags from initial content
+                cleaned_content = self._remove_search_tags(initial_content)
+                
+                # Generate final response with search results
+                final_messages = claude_messages + [
+                    {
+                        "role": "assistant",
+                        "content": cleaned_content
+                    },
+                    {
+                        "role": "user", 
+                        "content": f"Here are the search results for your queries:{search_results_content}\n\nPlease provide a comprehensive recipe response based on this information, including proper citations."
+                    }
+                ]
+
+                final_response = await self.client.messages.create(
+                    model=settings.anthropic_model,
+                    max_tokens=settings.anthropic_max_tokens,
+                    temperature=settings.anthropic_temperature,
+                    system=system_prompt,
+                    messages=final_messages,
+                    tools=None,
+                )
+
+                final_content, final_citations = self._extract_response_content(final_response)
+                all_citations.extend(final_citations)
+                
+                # Update rate limiter for multiple calls
+                self._rate_limiter.update_usage()
+                self._rate_limiter.update_usage()
+
+                return final_content, all_citations
+            else:
+                # No search tags found, return initial response
+                # Update rate limiter
+                self._rate_limiter.update_usage()
+                return initial_content, []
 
         except Exception as e:
             logger.error(f"Error generating Anthropic response: {e}")

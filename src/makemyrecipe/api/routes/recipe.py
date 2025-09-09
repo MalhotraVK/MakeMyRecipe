@@ -1,14 +1,18 @@
 """Recipe recommendation API routes."""
 
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from ...core.logging import get_logger
 from ...models.recipe import (
+    Citation,
     CuisineRecipeRequest,
+    EnhancedRecipeSearchResponse,
     IngredientSuggestionRequest,
+    Recipe,
     RecipeSearchRequest,
     RecipeSearchResponse,
     convert_recipe_result_to_response,
@@ -63,6 +67,41 @@ async def search_recipes(request: RecipeSearchRequest) -> RecipeSearchResponse:
     except Exception as e:
         logger.error(f"Error in recipe search: {e}")
         raise HTTPException(status_code=500, detail=f"Recipe search failed: {str(e)}")
+
+
+@router.post("/search/enhanced", response_model=EnhancedRecipeSearchResponse)
+async def search_recipes_enhanced(
+    request: RecipeSearchRequest,
+) -> EnhancedRecipeSearchResponse:
+    """
+    Enhanced recipe search with comprehensive citation support.
+
+    This endpoint provides the same search functionality as the standard search,
+    but returns full Recipe objects with detailed citation information, user
+    interaction features, and enhanced metadata.
+    """
+    try:
+        # Convert request to internal query format
+        query_params = convert_search_request_to_query(request)
+
+        # Search for recipes using enhanced method
+        recipes, raw_response = await recipe_service.search_recipes_enhanced(
+            user_query=request.query,
+            query_params=query_params,
+        )
+
+        return EnhancedRecipeSearchResponse(
+            recipes=recipes,
+            total_count=len(recipes),
+            search_query=request.query,
+            raw_response=raw_response,
+        )
+
+    except Exception as e:
+        logger.error(f"Error in enhanced recipe search: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Enhanced recipe search failed: {str(e)}"
+        )
 
 
 @router.post("/suggestions/ingredients", response_model=RecipeSearchResponse)

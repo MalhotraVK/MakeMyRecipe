@@ -82,7 +82,9 @@ class TestAnthropicService:
         assert "MakeMyRecipe" in prompt
         assert "recipe" in prompt.lower()
         assert "cooking" in prompt.lower()
-        assert "web search" in prompt.lower()
+        assert "search tags" in prompt.lower()
+        assert "<search>" in prompt
+        assert "</search>" in prompt
 
     def test_convert_messages(self, anthropic_service, sample_messages):
         """Test message conversion to Anthropic format."""
