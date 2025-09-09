@@ -41,11 +41,21 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     """Request model for sending a chat message."""
 
-    message: str = Field(..., description="The user's message")
+    message: str = Field(..., min_length=1, description="The user's message")
     conversation_id: Optional[str] = Field(
         None, description="ID of existing conversation"
     )
-    user_id: str = Field(..., description="ID of the user sending the message")
+    user_id: str = Field(
+        ..., min_length=1, description="ID of the user sending the message"
+    )
+
+
+class Citation(BaseModel):
+    """Citation model for web search results."""
+
+    title: str = Field(..., description="Title of the cited source")
+    url: str = Field(..., description="URL of the cited source")
+    snippet: Optional[str] = Field(None, description="Snippet from the source")
 
 
 class ChatResponse(BaseModel):
@@ -53,6 +63,9 @@ class ChatResponse(BaseModel):
 
     message: str = Field(..., description="The assistant's response")
     conversation_id: str = Field(..., description="ID of the conversation")
+    citations: List[Citation] = Field(
+        default_factory=list, description="Citations from web search"
+    )
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="When the response was generated",

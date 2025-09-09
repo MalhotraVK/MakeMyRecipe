@@ -1,6 +1,6 @@
 """LLM service for generating chat responses."""
 
-from typing import TYPE_CHECKING, Any, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
 from ..core.config import settings
 from ..core.logging import get_logger
@@ -28,6 +28,11 @@ class LLMService:
         self.model = settings.litellm_model
         self._setup_api_keys()
 
+        # Import Anthropic service here to avoid circular imports
+        from .anthropic_service import anthropic_service
+
+        self.anthropic_service = anthropic_service
+
     def _setup_api_keys(self) -> None:
         """Set up API keys for LiteLLM."""
         if settings.openai_api_key:
@@ -44,11 +49,81 @@ class LLMService:
         self, messages: List[ChatMessage], system_prompt: Optional[str] = None
     ) -> str:
         """Generate a response using the LLM."""
+        # Check if this is a recipe-related query and use Anthropic with web search
+        if self._is_recipe_query(messages) and settings.anthropic_api_key:
+            try:
+                (
+                    response,
+                    citations,
+                ) = await self.anthropic_service.generate_recipe_response(
+                    messages,
+                    system_prompt,
+                    use_web_search=settings.anthropic_enable_web_search,
+                )
+                return response
+            except Exception as e:
+                logger.error(f"Anthropic service failed, falling back to LiteLLM: {e}")
+
+        # Fallback to LiteLLM or mock response
         if litellm_module is None:
             logger.warning("LiteLLM not available, returning mock response")
             return self._get_mock_response(messages)
 
         return await self._generate_with_litellm(messages, system_prompt)
+
+    async def generate_response_with_citations(
+        self, messages: List[ChatMessage], system_prompt: Optional[str] = None
+    ) -> Tuple[str, List[Dict[str, Any]]]:
+        """Generate a response with citations using the LLM."""
+        # Check if this is a recipe-related query and use Anthropic with web search
+        if self._is_recipe_query(messages) and settings.anthropic_api_key:
+            try:
+                return await self.anthropic_service.generate_recipe_response(
+                    messages,
+                    system_prompt,
+                    use_web_search=settings.anthropic_enable_web_search,
+                )
+            except Exception as e:
+                logger.error(f"Anthropic service failed, falling back to LiteLLM: {e}")
+
+        # Fallback to regular response without citations
+        response = await self.generate_response(messages, system_prompt)
+        return response, []
+
+    def _is_recipe_query(self, messages: List[ChatMessage]) -> bool:
+        """Determine if the query is recipe-related."""
+        if not messages:
+            return False
+
+        last_message = messages[-1].content.lower()
+        recipe_keywords = [
+            "recipe",
+            "cook",
+            "cooking",
+            "bake",
+            "baking",
+            "make",
+            "prepare",
+            "ingredient",
+            "ingredients",
+            "dish",
+            "meal",
+            "food",
+            "cuisine",
+            "how to cook",
+            "how to make",
+            "how to bake",
+            "dinner",
+            "lunch",
+            "breakfast",
+            "dessert",
+            "appetizer",
+            "snack",
+            "vegetarian",
+            "vegan",
+        ]
+
+        return any(keyword in last_message for keyword in recipe_keywords)
 
     async def _generate_with_litellm(
         self, messages: List[ChatMessage], system_prompt: Optional[str] = None

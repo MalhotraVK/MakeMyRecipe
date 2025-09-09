@@ -6,7 +6,13 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from ...core.logging import get_logger
-from ...models.chat import ChatRequest, ChatResponse, Conversation, ConversationList
+from ...models.chat import (
+    ChatRequest,
+    ChatResponse,
+    Citation,
+    Conversation,
+    ConversationList,
+)
 from ...services.chat_service import chat_service
 from ...services.llm_service import llm_service
 
@@ -32,8 +38,11 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
         # Add user message to conversation
         chat_service.add_message(conversation.conversation_id, "user", request.message)
 
-        # Generate LLM response
-        response_content = await llm_service.generate_response(
+        # Generate LLM response with citations
+        (
+            response_content,
+            citations_data,
+        ) = await llm_service.generate_response_with_citations(
             conversation.messages, conversation.system_prompt
         )
 
@@ -42,8 +51,21 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
             conversation.conversation_id, "assistant", response_content
         )
 
+        # Convert citations to Citation objects
+        citations = [
+            Citation(
+                title=citation.get("title", "") if citation else "",
+                url=citation.get("url", "") if citation else "",
+                snippet=citation.get("snippet", "") if citation else "",
+            )
+            for citation in citations_data
+            if citation is not None
+        ]
+
         return ChatResponse(
-            message=response_content, conversation_id=conversation.conversation_id
+            message=response_content,
+            conversation_id=conversation.conversation_id,
+            citations=citations,
         )
 
     except HTTPException:
