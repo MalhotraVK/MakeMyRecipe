@@ -41,13 +41,13 @@ class TestRecipeService:
         - Salt for pasta water
 
         **Instructions:**
-        1. Bring a large pot of salted water to boil and cook spaghetti 
+        1. Bring a large pot of salted water to boil and cook spaghetti
            according to package directions.
         2. While pasta cooks, fry pancetta in a large skillet until crispy.
         3. In a bowl, whisk together eggs, cheese, and black pepper.
         4. Drain pasta, reserving 1 cup pasta water.
         5. Add hot pasta to the skillet with pancetta.
-        6. Remove from heat and quickly stir in egg mixture, adding pasta 
+        6. Remove from heat and quickly stir in egg mixture, adding pasta
            water as needed.
         7. Serve immediately with extra cheese and pepper.
 
