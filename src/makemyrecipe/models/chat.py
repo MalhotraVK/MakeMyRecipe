@@ -48,11 +48,22 @@ class ChatRequest(BaseModel):
     user_id: str = Field(..., description="ID of the user sending the message")
 
 
+class Citation(BaseModel):
+    """Citation model for web search results."""
+
+    title: str = Field(..., description="Title of the cited source")
+    url: str = Field(..., description="URL of the cited source")
+    snippet: Optional[str] = Field(None, description="Snippet from the source")
+
+
 class ChatResponse(BaseModel):
     """Response model for chat messages."""
 
     message: str = Field(..., description="The assistant's response")
     conversation_id: str = Field(..., description="ID of the conversation")
+    citations: List[Citation] = Field(
+        default_factory=list, description="Citations from web search"
+    )
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="When the response was generated",
