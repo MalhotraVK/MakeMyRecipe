@@ -494,8 +494,8 @@ class RecipeService:
         """
         from ..models.recipe import (
             Recipe,
-            convert_recipe_result_to_recipe,
             convert_citations_to_recipe_citations,
+            convert_recipe_result_to_recipe,
         )
 
         # Get recipe results using existing method

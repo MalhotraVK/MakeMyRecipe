@@ -1,13 +1,12 @@
 """Recipe-related data models."""
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+
+# Import types at runtime to avoid circular imports
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
-
-# Import types at runtime to avoid circular imports
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..services.recipe_service import (
@@ -279,9 +278,9 @@ def convert_recipe_result_to_recipe(
     # Import types and rebuild model if needed
     try:
         from ..services.recipe_service import (
-            DifficultyLevel,
             CuisineType,
             DietaryRestriction,
+            DifficultyLevel,
         )
 
         Recipe.model_rebuild()
