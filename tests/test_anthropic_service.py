@@ -82,7 +82,9 @@ class TestAnthropicService:
         assert "MakeMyRecipe" in prompt
         assert "recipe" in prompt.lower()
         assert "cooking" in prompt.lower()
-        assert "web search" in prompt.lower()
+        assert "search tags" in prompt.lower()
+        assert "<search>" in prompt
+        assert "</search>" in prompt
 
     def test_convert_messages(self, anthropic_service, sample_messages):
         """Test message conversion to Anthropic format."""
@@ -207,9 +209,9 @@ class TestAnthropicService:
         assert call_args[1]["model"] == "claude-sonnet-4-20250514"
         assert call_args[1]["max_tokens"] == 2000
         assert call_args[1]["temperature"] == 0.7
-        assert "tools" in call_args[1]
-        # Should have web search tool by default
-        assert len(call_args[1]["tools"]) == 1
+        # With the new architecture, initial call doesn't include tools
+        # Tools are only used in separate search calls when search tags are detected
+        assert "tools" not in call_args[1]
 
     @pytest.mark.asyncio
     @patch("src.makemyrecipe.services.anthropic_service.settings")
@@ -252,11 +254,9 @@ class TestAnthropicService:
         assert call_args[1]["model"] == "claude-sonnet-4-20250514"
         assert call_args[1]["max_tokens"] == 2000
         assert call_args[1]["temperature"] == 0.7
-        assert "tools" in call_args[1]
-        # Should have empty tools list when web search is disabled
-        assert call_args[1]["tools"] == []
-        # Ensure tools parameter is not None (which would cause the 400 error)
-        assert call_args[1]["tools"] is not None
+        # Should not have tools parameter when web search is disabled
+        # This prevents the 400 error that occurred when tools=None was passed
+        assert "tools" not in call_args[1]
 
     def test_extract_response_content_text_only(self, anthropic_service):
         """Test extracting content from response with text only."""

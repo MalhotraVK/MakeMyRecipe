@@ -3,12 +3,15 @@
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from ..core.config import settings
 from ..core.logging import get_logger
 from ..models.chat import ChatMessage
 from .anthropic_service import anthropic_service
+
+if TYPE_CHECKING:
+    from ..models.recipe import Recipe
 
 logger = get_logger(__name__)
 
@@ -332,7 +335,10 @@ class RecipeService:
         return metadata
 
     def _parse_recipe_response(
-        self, content: str, citations: List[Dict[str, Any]]
+        self,
+        content: str,
+        citations: List[Dict[str, Any]],
+        search_query: Optional[str] = None,
     ) -> List[RecipeResult]:
         """Parse recipe response into structured format."""
         recipes = []
@@ -464,7 +470,7 @@ class RecipeService:
             )
 
             # Parse response into structured recipes
-            recipes = self._parse_recipe_response(content, citations)
+            recipes = self._parse_recipe_response(content, citations, user_query)
 
             logger.info(f"Found {len(recipes)} recipes for query: {user_query}")
 
@@ -476,6 +482,36 @@ class RecipeService:
                 [],
                 f"Sorry, I encountered an error while searching for recipes: {str(e)}",
             )
+
+    async def search_recipes_enhanced(
+        self, user_query: str, query_params: Optional[RecipeSearchQuery] = None
+    ) -> Tuple[List["Recipe"], str]:
+        """
+        Search for recipes and return enhanced Recipe objects with citations.
+
+        Returns:
+            Tuple of (recipe_objects, raw_response_content)
+        """
+        from ..models.recipe import (
+            Recipe,
+            convert_citations_to_recipe_citations,
+            convert_recipe_result_to_recipe,
+        )
+
+        # Get recipe results using existing method
+        recipe_results, raw_response = await self.search_recipes(
+            user_query, query_params
+        )
+
+        # Convert to enhanced Recipe objects
+        recipes = []
+        for recipe_result in recipe_results:
+            recipe = convert_recipe_result_to_recipe(recipe_result, user_query)
+            recipes.append(recipe)
+
+        logger.info(f"Converted {len(recipes)} recipe results to Recipe objects")
+
+        return recipes, raw_response
 
     async def get_recipe_suggestions(
         self,
