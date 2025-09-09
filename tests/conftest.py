@@ -52,6 +52,13 @@ def sample_conversation_data() -> dict:
     return {
         "user_id": "test_user_123",
         "conversation_id": "conv_456",
+        "system_prompt": (
+            "You are MakeMyRecipe, an AI assistant specialized in helping users "
+            "create delicious recipes. You provide proven recipes with links to "
+            "actual pages or YouTube videos, remember user preferences, and offer "
+            "personalized cooking suggestions based on available ingredients and "
+            "dietary requirements."
+        ),
         "messages": [
             {
                 "role": "user",
