@@ -176,7 +176,7 @@ class TestAnthropicService:
     ):
         """Test recipe response generation with mocked client."""
         # Setup mock settings
-        mock_settings.anthropic_model = "claude-3-5-sonnet-20241022"
+        mock_settings.anthropic_model = "claude-sonnet-4-20250514"
         mock_settings.anthropic_max_tokens = 2000
         mock_settings.anthropic_temperature = 0.7
         mock_settings.anthropic_rate_limit_rpm = 50
@@ -204,7 +204,7 @@ class TestAnthropicService:
         # Verify client was called with correct parameters
         mock_client.messages.create.assert_called_once()
         call_args = mock_client.messages.create.call_args
-        assert call_args[1]["model"] == "claude-3-5-sonnet-20241022"
+        assert call_args[1]["model"] == "claude-sonnet-4-20250514"
         assert call_args[1]["max_tokens"] == 2000
         assert call_args[1]["temperature"] == 0.7
         assert "tools" in call_args[1]
