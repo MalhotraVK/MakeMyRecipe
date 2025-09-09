@@ -53,19 +53,19 @@ class ConnectionManager:
             f"WebSocket connection {connection_id} disconnected for user {user_id}"
         )
 
-    async def send_personal_message(self, message: dict, connection_id: str) -> None:
+    async def send_personal_message(self, message: str, connection_id: str) -> None:
         """Send a message to a specific connection."""
         if connection_id in self.active_connections:
             websocket = self.active_connections[connection_id]
             if websocket.client_state == WebSocketState.CONNECTED:
                 try:
-                    await websocket.send_text(json.dumps(message))
+                    await websocket.send_text(message)
                 except Exception as e:
                     logger.error(
                         f"Error sending message to connection {connection_id}: {e}"
                     )
 
-    async def send_user_message(self, message: dict, user_id: str) -> None:
+    async def send_user_message(self, message: str, user_id: str) -> None:
         """Send a message to all connections for a user."""
         if user_id in self.user_connections:
             for connection_id in self.user_connections[user_id].copy():
@@ -92,7 +92,9 @@ async def websocket_chat_endpoint(websocket: WebSocket, user_id: str) -> None:
                 "connection_id": connection_id,
             },
         )
-        await manager.send_personal_message(welcome_message.model_dump(), connection_id)
+        await manager.send_personal_message(
+            welcome_message.model_dump_json(), connection_id
+        )
 
         while True:
             # Receive message from client
@@ -160,7 +162,7 @@ async def handle_chat_message(
             },
         )
         await manager.send_personal_message(
-            user_msg_response.model_dump(), connection_id
+            user_msg_response.model_dump_json(), connection_id
         )
 
         # Generate LLM response
@@ -181,7 +183,7 @@ async def handle_chat_message(
             },
         )
         await manager.send_personal_message(
-            assistant_msg_response.model_dump(), connection_id
+            assistant_msg_response.model_dump_json(), connection_id
         )
 
     except Exception as e:
@@ -192,10 +194,10 @@ async def handle_chat_message(
 async def handle_ping(connection_id: str) -> None:
     """Handle a ping message."""
     pong_message = WebSocketMessage(type="pong", data={"message": "pong"})
-    await manager.send_personal_message(pong_message.model_dump(), connection_id)
+    await manager.send_personal_message(pong_message.model_dump_json(), connection_id)
 
 
 async def send_error_message(error: str, connection_id: str) -> None:
     """Send an error message to a connection."""
     error_message = WebSocketMessage(type="error", data={"error": error})
-    await manager.send_personal_message(error_message.model_dump(), connection_id)
+    await manager.send_personal_message(error_message.model_dump_json(), connection_id)
