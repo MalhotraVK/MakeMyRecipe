@@ -108,7 +108,7 @@ class AnthropicService:
                 temperature=settings.anthropic_temperature,
                 system=system_prompt,
                 messages=claude_messages,
-                tools=tools if tools else None,
+                tools=tools,
             )
 
             # Extract content and citations
