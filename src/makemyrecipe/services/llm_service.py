@@ -69,7 +69,34 @@ class LLMService:
             logger.warning("LiteLLM not available, returning mock response")
             return self._get_mock_response(messages)
 
-        return await self._generate_with_litellm(messages, system_prompt)
+        # If we reach here, try LiteLLM
+        try:
+            # Convert messages to LiteLLM format
+            llm_messages = []
+            if system_prompt:
+                llm_messages.append({"role": "system", "content": system_prompt})
+
+            for msg in messages:
+                llm_messages.append({"role": msg.role, "content": msg.content})
+
+            # Generate response
+            response = await litellm_module.acompletion(
+                model=self.model,
+                messages=llm_messages,
+                temperature=0.7,
+                max_tokens=1000,
+            )
+
+            content = getattr(response.choices[0].message, "content", None)  # noqa
+            return (
+                str(content)
+                if content is not None
+                else self._get_mock_response(messages)
+            )
+
+        except Exception as e:
+            logger.error(f"Error generating LLM response: {e}")
+            return self._get_mock_response(messages)
 
     async def generate_response_with_citations(
         self, messages: List[ChatMessage], system_prompt: Optional[str] = None
@@ -149,8 +176,12 @@ class LLMService:
                 max_tokens=1000,
             )
 
-            content = cast(Optional[str], response.choices[0].message.content)
-            return content if content is not None else self._get_mock_response(messages)
+            content = getattr(response.choices[0].message, "content", None)  # noqa
+            return (
+                str(content)
+                if content is not None
+                else self._get_mock_response(messages)
+            )
 
         except Exception as e:
             logger.error(f"Error generating LLM response: {e}")
@@ -165,41 +196,110 @@ class LLMService:
             )
 
         last_message = messages[-1].content.lower()
+        logger.info(f"Mock response for message: '{last_message}'")
 
-        # Simple keyword-based responses
+        # Debug: Check each keyword individually
+        pasta_keywords = ["pasta", "spaghetti", "noodles"]
+        chicken_keywords = ["chicken", "poultry"]
+        dessert_keywords = ["dessert", "sweet", "cake", "cookie"]
+
+        logger.info(
+            f"Pasta match: {any(word in last_message for word in pasta_keywords)}"
+        )
+        logger.info(
+            f"Chicken match: {any(word in last_message for word in chicken_keywords)}"
+        )
+        logger.info(
+            f"Dessert match: {any(word in last_message for word in dessert_keywords)}"
+        )
+
+        for word in dessert_keywords:
+            if word in last_message:
+                logger.info(
+                    f"Found dessert keyword: '{word}' in message: '{last_message}'"
+                )
+
+        # Simple keyword-based responses with proper markdown formatting
         if any(word in last_message for word in ["pasta", "spaghetti", "noodles"]):
+            logger.info("Matched pasta keywords")
             return (
-                "I'd love to help you make pasta! Here's a simple and delicious "
-                "recipe:\n\n**Classic Tomato Pasta**\n\nIngredients:\n- 400g pasta\n"
-                "- 2 cans crushed tomatoes\n- 3 cloves garlic\n- Fresh basil\n"
-                "- Olive oil\n- Salt and pepper\n\nCook pasta according to package "
-                "directions. Meanwhile, sauté garlic in olive oil, add tomatoes and "
-                "simmer. Toss with pasta and fresh basil. Enjoy!"
+                "I'd love to help you make pasta! Here's a simple and "
+                "delicious recipe:\n\n"
+                "## Classic Tomato Pasta\n\n"
+                "### Ingredients:\n"
+                "- 400g pasta\n"
+                "- 2 cans crushed tomatoes\n"
+                "- 3 cloves garlic, minced\n"
+                "- Fresh basil leaves\n"
+                "- 3 tbsp olive oil\n"
+                "- Salt and pepper to taste\n\n"
+                "### Instructions:\n"
+                "1. Cook pasta according to package directions until al dente\n"
+                "2. Meanwhile, heat olive oil in a large pan over medium heat\n"
+                "3. Sauté garlic until fragrant (about 1 minute)\n"
+                "4. Add crushed tomatoes and simmer for 10-15 minutes\n"
+                "5. Season with salt and pepper\n"
+                "6. Toss cooked pasta with sauce\n"
+                "7. Garnish with fresh basil and serve immediately\n\n"
+                "**Enjoy your homemade pasta!**"
             )
 
         elif any(word in last_message for word in ["chicken", "poultry"]):
+            logger.info("Matched chicken keywords")
             return (
-                "Chicken is so versatile! Here's a quick recipe:\n\n"
-                "**Herb-Roasted Chicken**\n\nIngredients:\n- 4 chicken breasts\n"
-                "- 2 tbsp olive oil\n- 1 tsp each: thyme, rosemary, garlic powder\n"
-                "- Salt and pepper\n\nRub chicken with oil and seasonings. "
-                "Bake at 375°F for 25-30 minutes until cooked through. "
-                "Perfect with roasted vegetables!"
+                "Chicken is so versatile! Here's a quick and delicious recipe:\n\n"
+                "## Herb-Roasted Chicken\n\n"
+                "### Ingredients:\n"
+                "- 4 chicken breasts (boneless, skinless)\n"
+                "- 2 tbsp olive oil\n"
+                "- 1 tsp dried thyme\n"
+                "- 1 tsp dried rosemary\n"
+                "- 1 tsp garlic powder\n"
+                "- Salt and pepper to taste\n\n"
+                "### Instructions:\n"
+                "1. Preheat oven to 375°F (190°C)\n"
+                "2. Pat chicken breasts dry with paper towels\n"
+                "3. Rub chicken with olive oil on both sides\n"
+                "4. Mix all seasonings in a small bowl\n"
+                "5. Season chicken evenly with herb mixture\n"
+                "6. Place on baking sheet lined with parchment paper\n"
+                "7. Bake for 25-30 minutes until internal temperature reaches 165°F\n"
+                "8. Let rest for 5 minutes before slicing\n\n"
+                "**Perfect with roasted vegetables or a fresh salad!**"
             )
 
         elif any(
             word in last_message for word in ["dessert", "sweet", "cake", "cookie"]
         ):
+            logger.info("Matched dessert keywords")
             return (
-                "Let's make something sweet! Here's an easy dessert:\n\n"
-                "**Chocolate Chip Cookies**\n\nIngredients:\n- 2¼ cups flour\n"
-                "- 1 cup butter, softened\n- ¾ cup each: white and brown sugar\n"
-                "- 2 eggs\n- 2 tsp vanilla\n- 1 tsp baking soda\n- 1 tsp salt\n"
-                "- 2 cups chocolate chips\n\nMix ingredients, drop on baking sheet, "
-                "bake at 375°F for 9-11 minutes. Enjoy warm!"
+                "Let's make something sweet! Here's an easy and delicious dessert:\n\n"
+                "## Classic Chocolate Chip Cookies\n\n"
+                "### Ingredients:\n"
+                "- 2¼ cups all-purpose flour\n"
+                "- 1 cup butter, softened\n"
+                "- ¾ cup granulated white sugar\n"
+                "- ¾ cup packed brown sugar\n"
+                "- 2 large eggs\n"
+                "- 2 tsp vanilla extract\n"
+                "- 1 tsp baking soda\n"
+                "- 1 tsp salt\n"
+                "- 2 cups chocolate chips\n\n"
+                "### Instructions:\n"
+                "1. Preheat oven to 375°F (190°C)\n"
+                "2. In a large bowl, cream together butter and both sugars\n"
+                "3. Beat in eggs one at a time, then add vanilla\n"
+                "4. In separate bowl, whisk together flour, baking soda, and salt\n"
+                "5. Gradually mix dry ingredients into wet ingredients\n"
+                "6. Stir in chocolate chips\n"
+                "7. Drop rounded tablespoons of dough onto ungreased baking sheets\n"
+                "8. Bake for 9-11 minutes until golden brown\n"
+                "9. Cool on baking sheet for 2 minutes, then transfer to wire rack\n\n"
+                "**Enjoy them warm with a glass of milk!**"
             )
 
         else:
+            logger.info("No keywords matched, returning generic response")
             return (
                 "I'm here to help you create amazing recipes! Tell me what "
                 "ingredients you have or what type of dish you're craving, and "
