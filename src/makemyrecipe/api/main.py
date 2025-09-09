@@ -1,7 +1,11 @@
 """Main FastAPI application entry point."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from ..core.config import settings
 from ..core.logging import get_logger, setup_logging
@@ -42,6 +46,11 @@ def create_app() -> FastAPI:
     app.include_router(recipe.router)
     app.include_router(websocket.router)
 
+    # Mount static files
+    static_path = Path(__file__).parent.parent.parent.parent / "static"
+    if static_path.exists():
+        app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
     # Health check endpoint
     @app.get("/health")
     async def health_check() -> dict:
@@ -52,12 +61,29 @@ def create_app() -> FastAPI:
             "version": settings.app_version,
         }
 
-    # Root endpoint
+    # Root endpoint - serve chat interface
     @app.get("/")
-    async def root() -> dict:
-        """Root endpoint."""
+    async def root():
+        """Serve the main chat interface."""
+        static_path = Path(__file__).parent.parent.parent.parent / "static"
+        index_path = static_path / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        else:
+            return {
+                "message": f"Welcome to {settings.app_name}!",
+                "version": settings.app_version,
+                "docs": "/docs",
+                "redoc": "/redoc",
+                "websocket": "/ws/chat/{user_id}",
+            }
+
+    # API info endpoint
+    @app.get("/api")
+    async def api_info() -> dict:
+        """API information endpoint."""
         return {
-            "message": f"Welcome to {settings.app_name}!",
+            "message": f"Welcome to {settings.app_name} API!",
             "version": settings.app_version,
             "docs": "/docs",
             "redoc": "/redoc",
