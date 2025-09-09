@@ -45,10 +45,6 @@ class AnthropicService:
         return {
             "type": "web_search_20250305",
             "name": "web_search",
-            "description": (
-                "Search the web for recipe information, cooking techniques, "
-                "and ingredient details"
-            ),
         }
 
     def _create_recipe_system_prompt(self) -> str:
