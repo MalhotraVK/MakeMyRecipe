@@ -15,7 +15,7 @@ class TestSettings:
     def test_default_settings(self):
         """Test that default settings are loaded correctly."""
         settings = Settings()
-        
+
         assert settings.app_name == "MakeMyRecipe"
         assert settings.app_version == "0.1.0"
         assert settings.api_host == "0.0.0.0"
@@ -30,11 +30,11 @@ class TestSettings:
             "API_PORT": "9000",
             "MAX_CONVERSATION_HISTORY": "100",
         }
-        
+
         # Set environment variables
         for key, value in test_env.items():
             os.environ[key] = value
-        
+
         try:
             settings = Settings()
             assert settings.app_name == "TestApp"
@@ -50,25 +50,25 @@ class TestSettings:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             conv_path = temp_path / "test_conversations"
-            
+
             os.environ["CONVERSATION_STORAGE_PATH"] = str(conv_path)
-            
+
             try:
                 settings = Settings()
-                
+
                 # Check that data directory exists
                 assert Path("./data").exists()
-                
+
                 # Check that conversation storage directory exists
                 assert conv_path.exists()
-                
+
             finally:
                 os.environ.pop("CONVERSATION_STORAGE_PATH", None)
 
     def test_cors_origins_parsing(self):
         """Test that CORS origins are parsed correctly."""
         settings = Settings()
-        
+
         assert isinstance(settings.cors_origins, list)
         assert "http://localhost:3000" in settings.cors_origins
         assert "http://localhost:8000" in settings.cors_origins

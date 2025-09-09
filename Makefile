@@ -10,7 +10,7 @@ help:
 	@echo "  test         - Run all tests"
 	@echo "  test-unit    - Run unit tests only"
 	@echo "  test-integration - Run integration tests only"
-	@echo "  lint         - Run linting (flake8, mypy)"
+	@echo "  lint         - Run pre-commit hooks (black, isort, flake8, mypy)"
 	@echo "  format       - Format code (black, isort)"
 	@echo "  clean        - Clean up temporary files"
 	@echo "  run          - Run the development server"
@@ -21,6 +21,7 @@ install:
 
 dev-install:
 	uv sync --extra dev
+	uv run pre-commit install
 
 # Testing
 test:
@@ -37,8 +38,7 @@ test-cov:
 
 # Code quality
 lint:
-	uv run flake8 src/ tests/
-	uv run mypy src/
+	uv run pre-commit run --all-files
 
 format:
 	uv run black src/ tests/

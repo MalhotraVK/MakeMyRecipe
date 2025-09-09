@@ -17,7 +17,7 @@ def test_settings() -> Settings:
     """Create test settings with temporary directories."""
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        
+
         # Override settings for testing
         test_env = {
             "DATABASE_URL": f"sqlite:///{temp_path}/test.db",
@@ -25,14 +25,14 @@ def test_settings() -> Settings:
             "API_DEBUG": "true",
             "LOG_LEVEL": "DEBUG",
         }
-        
+
         # Set environment variables
         for key, value in test_env.items():
             os.environ[key] = value
-        
+
         settings = Settings()
         yield settings
-        
+
         # Clean up environment variables
         for key in test_env:
             os.environ.pop(key, None)
@@ -56,14 +56,14 @@ def sample_conversation_data() -> dict:
             {
                 "role": "user",
                 "content": "I want to make pasta with tomatoes",
-                "timestamp": "2024-01-01T12:00:00Z"
+                "timestamp": "2024-01-01T12:00:00Z",
             },
             {
                 "role": "assistant",
                 "content": "I can help you with a delicious pasta recipe!",
-                "timestamp": "2024-01-01T12:00:05Z"
-            }
+                "timestamp": "2024-01-01T12:00:05Z",
+            },
         ],
         "created_at": "2024-01-01T12:00:00Z",
-        "updated_at": "2024-01-01T12:00:05Z"
+        "updated_at": "2024-01-01T12:00:05Z",
     }

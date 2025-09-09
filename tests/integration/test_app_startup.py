@@ -13,7 +13,7 @@ class TestAppStartup:
     def test_app_creation(self):
         """Test that the application can be created successfully."""
         app = create_app()
-        
+
         assert app is not None
         assert app.title == "MakeMyRecipe"
         assert app.version == "0.1.0"
@@ -21,7 +21,7 @@ class TestAppStartup:
     def test_app_with_test_client(self):
         """Test that the application works with TestClient."""
         app = create_app()
-        
+
         with TestClient(app) as client:
             response = client.get("/health")
             assert response.status_code == 200
@@ -34,9 +34,9 @@ class TestAppStartup:
             headers={
                 "Origin": "http://localhost:3000",
                 "Access-Control-Request-Method": "GET",
-            }
+            },
         )
-        
+
         # Should not return 405 Method Not Allowed
         assert response.status_code != 405
 
@@ -44,6 +44,6 @@ class TestAppStartup:
         """Test that settings are properly integrated with the app."""
         settings = Settings()
         app = create_app()
-        
+
         assert app.title == settings.app_name
         assert app.version == settings.app_version
