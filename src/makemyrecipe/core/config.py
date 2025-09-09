@@ -13,10 +13,10 @@ class Settings(BaseSettings):
     # LLM Configuration
     anthropic_api_key: Optional[str] = Field(None, alias="ANTHROPIC_API_KEY")
     openai_api_key: Optional[str] = Field(None, alias="OPENAI_API_KEY")
-    litellm_model: str = Field("claude-3-5-sonnet-20241022", alias="LITELLM_MODEL")
+    litellm_model: str = Field("claude-sonnet-4-20250514", alias="LITELLM_MODEL")
 
     # Anthropic-specific configuration
-    anthropic_model: str = Field("claude-3-5-sonnet-20241022", alias="ANTHROPIC_MODEL")
+    anthropic_model: str = Field("claude-sonnet-4-20250514", alias="ANTHROPIC_MODEL")
     anthropic_max_tokens: int = Field(2000, alias="ANTHROPIC_MAX_TOKENS")
     anthropic_temperature: float = Field(0.7, alias="ANTHROPIC_TEMPERATURE")
     anthropic_enable_web_search: bool = Field(True, alias="ANTHROPIC_ENABLE_WEB_SEARCH")

@@ -20,7 +20,7 @@ class TestSettings:
         assert settings.app_version == "0.1.0"
         assert settings.api_host == "0.0.0.0"
         assert settings.api_port == 8000
-        assert settings.litellm_model == "claude-3-5-sonnet-20241022"
+        assert settings.litellm_model == "claude-sonnet-4-20250514"
         assert settings.max_conversation_history == 50
 
     def test_environment_variable_override(self):
