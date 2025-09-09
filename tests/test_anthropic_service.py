@@ -37,7 +37,43 @@ class TestAnthropicService:
 
         assert tool["type"] == "web_search_20250305"
         assert tool["name"] == "web_search"
-        assert "recipe" in tool["description"].lower()
+        # Web search tool doesn't accept custom description field
+        assert "description" not in tool
+
+    def test_web_search_tool_format_is_valid(self, anthropic_service):
+        """Test that web search tool format matches Anthropic API requirements."""
+        from anthropic.types.web_search_tool_20250305_param import (
+            WebSearchTool20250305Param,
+        )
+
+        tool = anthropic_service._get_web_search_tool()
+
+        # Verify the tool matches the expected format
+        # This should not raise any validation errors
+        try:
+            # The tool should be a valid WebSearchTool20250305Param
+            assert isinstance(tool, dict)
+            assert tool.get("type") == "web_search_20250305"
+            assert tool.get("name") == "web_search"
+
+            # Verify no extra fields that would cause 400 error
+            allowed_fields = {
+                "type",
+                "name",
+                "allowed_domains",
+                "blocked_domains",
+                "cache_control",
+                "max_uses",
+                "user_location",
+            }
+            tool_fields = set(tool.keys())
+            extra_fields = tool_fields - allowed_fields
+            assert (
+                not extra_fields
+            ), f"Tool has extra fields not allowed by API: {extra_fields}"
+
+        except Exception as e:
+            pytest.fail(f"Web search tool format is invalid: {e}")
 
     def test_create_recipe_system_prompt(self, anthropic_service):
         """Test recipe system prompt creation."""
