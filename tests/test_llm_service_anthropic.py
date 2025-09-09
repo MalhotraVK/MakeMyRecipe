@@ -158,7 +158,7 @@ class TestLLMServiceAnthropicIntegration:
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
             mock_response.choices[0].message.content = "Here's the weather information"
-            mock_litellm.acompletion.return_value = mock_response
+            mock_litellm.acompletion = AsyncMock(return_value=mock_response)
 
             response = await llm_service.generate_response(non_recipe_messages)
 
@@ -188,7 +188,7 @@ class TestLLMServiceAnthropicIntegration:
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
             mock_response.choices[0].message.content = "Fallback pasta recipe"
-            mock_litellm.acompletion.return_value = mock_response
+            mock_litellm.acompletion = AsyncMock(return_value=mock_response)
 
             response = await llm_service.generate_response(recipe_messages)
 
@@ -210,7 +210,7 @@ class TestLLMServiceAnthropicIntegration:
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
             mock_response.choices[0].message.content = "LiteLLM pasta recipe"
-            mock_litellm.acompletion.return_value = mock_response
+            mock_litellm.acompletion = AsyncMock(return_value=mock_response)
 
             response = await llm_service.generate_response(recipe_messages)
 
@@ -253,7 +253,7 @@ class TestLLMServiceAnthropicIntegration:
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
             mock_response.choices[0].message.content = "General response"
-            mock_litellm.acompletion.return_value = mock_response
+            mock_litellm.acompletion = AsyncMock(return_value=mock_response)
 
             response, citations = await llm_service.generate_response_with_citations(
                 non_recipe_messages

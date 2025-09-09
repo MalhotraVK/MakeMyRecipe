@@ -240,27 +240,24 @@ class TestRateLimiter:
     @pytest.mark.asyncio
     async def test_rate_limiter_at_limit(self, rate_limiter):
         """Test rate limiter when at the limit."""
-        # Fill up to the limit
-        for _ in range(5):
-            await rate_limiter.wait_if_needed()
-            rate_limiter.update_usage()
+        # Mock time.time and asyncio.sleep to control timing
+        with patch("time.time") as mock_time, patch("asyncio.sleep") as mock_sleep:
+            # Set up initial time
+            mock_time.return_value = 100.0
+            mock_sleep.return_value = None  # Mock async sleep
 
-        assert len(rate_limiter.requests) == 5
+            # Fill up to the limit
+            for _ in range(5):
+                await rate_limiter.wait_if_needed()
+                rate_limiter.update_usage()
 
-        # Next request should trigger rate limiting
-        # We'll mock time.time to avoid actually waiting
-        with patch("time.time") as mock_time:
-            mock_time.side_effect = [
-                100,
-                100,
-                100,
-                100,
-                100,
-                100,
-                150,
-            ]  # Simulate time passing
+            assert len(rate_limiter.requests) == 5
 
-            # This should clean up old requests
+            # Now simulate time passing (more than 60 seconds)
+            # This should clean up old requests when we call wait_if_needed again
+            mock_time.return_value = 170.0  # 70 seconds later
+
+            # This should clean up old requests since they're now older than 60 seconds
             await rate_limiter.wait_if_needed()
 
             # Requests should be cleaned up

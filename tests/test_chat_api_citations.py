@@ -40,13 +40,16 @@ class TestChatAPICitations:
             },
         ]
 
-    @patch("src.makemyrecipe.services.llm_service.llm_service")
+    @patch(
+        "src.makemyrecipe.services.llm_service.llm_service."
+        "generate_response_with_citations"
+    )
     def test_chat_endpoint_returns_citations(
-        self, mock_llm_service, client, sample_chat_request, sample_citations
+        self, mock_generate_response, client, sample_chat_request, sample_citations
     ):
         """Test that chat endpoint returns citations."""
         # Mock the LLM service to return response with citations
-        mock_llm_service.generate_response_with_citations.return_value = (
+        mock_generate_response.return_value = (
             "Here's a great carbonara recipe with authentic Italian techniques!",
             sample_citations,
         )
@@ -73,13 +76,16 @@ class TestChatAPICitations:
         assert citations[0]["title"] == "Authentic Pasta Carbonara Recipe"
         assert citations[0]["url"] == "https://example.com/carbonara"
 
-    @patch("src.makemyrecipe.services.llm_service.llm_service")
+    @patch(
+        "src.makemyrecipe.services.llm_service.llm_service."
+        "generate_response_with_citations"
+    )
     def test_chat_endpoint_empty_citations(
-        self, mock_llm_service, client, sample_chat_request
+        self, mock_generate_response, client, sample_chat_request
     ):
         """Test chat endpoint with empty citations."""
         # Mock the LLM service to return response without citations
-        mock_llm_service.generate_response_with_citations.return_value = (
+        mock_generate_response.return_value = (
             "Here's a simple pasta recipe.",
             [],
         )
@@ -92,9 +98,12 @@ class TestChatAPICitations:
         assert "citations" in data
         assert data["citations"] == []
 
-    @patch("src.makemyrecipe.services.llm_service.llm_service")
+    @patch(
+        "src.makemyrecipe.services.llm_service.llm_service."
+        "generate_response_with_citations"
+    )
     def test_chat_endpoint_with_conversation_id(
-        self, mock_llm_service, client, sample_citations
+        self, mock_generate_response, client, sample_citations
     ):
         """Test chat endpoint with existing conversation."""
         # First, create a conversation
@@ -103,7 +112,7 @@ class TestChatAPICitations:
         conversation_id = create_response.json()["conversation_id"]
 
         # Mock the LLM service
-        mock_llm_service.generate_response_with_citations.return_value = (
+        mock_generate_response.return_value = (
             "Here's another great recipe!",
             sample_citations,
         )
@@ -123,13 +132,16 @@ class TestChatAPICitations:
         assert data["conversation_id"] == conversation_id
         assert len(data["citations"]) == 2
 
-    @patch("src.makemyrecipe.services.llm_service.llm_service")
+    @patch(
+        "src.makemyrecipe.services.llm_service.llm_service."
+        "generate_response_with_citations"
+    )
     def test_chat_endpoint_handles_citation_conversion_errors(
-        self, mock_llm_service, client, sample_chat_request
+        self, mock_generate_response, client, sample_chat_request
     ):
         """Test that chat endpoint handles citation conversion errors gracefully."""
         # Mock the LLM service to return malformed citations
-        mock_llm_service.generate_response_with_citations.return_value = (
+        mock_generate_response.return_value = (
             "Here's a recipe.",
             [
                 {"title": "Good Recipe"},  # Missing url and snippet
@@ -150,7 +162,7 @@ class TestChatAPICitations:
 
         # Should handle malformed citations gracefully
         citations = data["citations"]
-        assert len(citations) == 4  # All citations should be processed
+        assert len(citations) == 3  # None values should be filtered out
 
         # Check that missing fields are handled
         assert citations[0]["title"] == "Good Recipe"
@@ -185,15 +197,16 @@ class TestChatAPICitations:
         # Should return validation error
         assert response.status_code == 422
 
-    @patch("src.makemyrecipe.services.llm_service.llm_service")
+    @patch(
+        "src.makemyrecipe.services.llm_service.llm_service."
+        "generate_response_with_citations"
+    )
     def test_chat_endpoint_llm_service_exception(
-        self, mock_llm_service, client, sample_chat_request
+        self, mock_generate_response, client, sample_chat_request
     ):
         """Test chat endpoint when LLM service raises an exception."""
         # Mock the LLM service to raise an exception
-        mock_llm_service.generate_response_with_citations.side_effect = Exception(
-            "LLM service error"
-        )
+        mock_generate_response.side_effect = Exception("LLM service error")
 
         response = client.post("/api/chat", json=sample_chat_request)
 

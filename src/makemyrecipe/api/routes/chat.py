@@ -54,11 +54,12 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
         # Convert citations to Citation objects
         citations = [
             Citation(
-                title=citation.get("title", ""),
-                url=citation.get("url", ""),
-                snippet=citation.get("snippet", ""),
+                title=citation.get("title", "") if citation else "",
+                url=citation.get("url", "") if citation else "",
+                snippet=citation.get("snippet", "") if citation else "",
             )
             for citation in citations_data
+            if citation is not None
         ]
 
         return ChatResponse(

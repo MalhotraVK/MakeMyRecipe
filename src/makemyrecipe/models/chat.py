@@ -41,11 +41,13 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     """Request model for sending a chat message."""
 
-    message: str = Field(..., description="The user's message")
+    message: str = Field(..., min_length=1, description="The user's message")
     conversation_id: Optional[str] = Field(
         None, description="ID of existing conversation"
     )
-    user_id: str = Field(..., description="ID of the user sending the message")
+    user_id: str = Field(
+        ..., min_length=1, description="ID of the user sending the message"
+    )
 
 
 class Citation(BaseModel):
