@@ -332,21 +332,196 @@ class MakeMyRecipeApp {
      * Process message content for formatting and recipe cards
      */
     processMessageContent(content) {
-        // Convert markdown-like formatting to HTML
+        if (!content || typeof content !== 'string') {
+            return '';
+        }
+
+        // Escape HTML to prevent XSS attacks
         let processed = content
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;');
+
+        // Process markdown elements in order of complexity
+
+        // 1. Headers (must be at start of line)
+        processed = processed
+            .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gm, '<h1>$1</h1>');
+
+        // 2. Bold and italic (before lists to avoid conflicts)
+        processed = processed
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+        // 3. Code blocks and inline code
+        processed = processed
+            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+            .replace(/`(.*?)`/g, '<code>$1</code>');
+
+        // 4. URLs (auto-linking)
+        processed = processed
+            .replace(/(https?:\/\/[^\s<>"]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+
+        // 5. Lists - Process unordered lists
+        processed = this.processUnorderedLists(processed);
+
+        // 6. Lists - Process ordered lists
+        processed = this.processOrderedLists(processed);
+
+        // 7. Line breaks and paragraphs
+        processed = processed
             .replace(/\n\n/g, '</p><p>')
             .replace(/\n/g, '<br>');
 
-        // Wrap in paragraphs
-        processed = '<p>' + processed + '</p>';
+        // 8. Wrap in paragraphs (but not if already wrapped in block elements)
+        if (!processed.match(/^<(h[1-6]|ul|ol|pre|blockquote)/)) {
+            processed = '<p>' + processed + '</p>';
+        }
 
-        // Clean up empty paragraphs
-        processed = processed.replace(/<p><\/p>/g, '');
+        // 9. Clean up empty paragraphs and fix nested elements
+        processed = processed
+            .replace(/<p><\/p>/g, '')
+            .replace(/<p>(<h[1-6]>.*?<\/h[1-6]>)<\/p>/g, '$1')
+            .replace(/<p>(<ul>.*?<\/ul>)<\/p>/gs, '$1')
+            .replace(/<p>(<ol>.*?<\/ol>)<\/p>/gs, '$1')
+            .replace(/<p>(<pre>.*?<\/pre>)<\/p>/gs, '$1');
 
         return processed;
+    }
+
+    /**
+     * Process unordered lists (-, *, +)
+     */
+    processUnorderedLists(content) {
+        // Match lines that start with -, *, or + followed by space
+        const listRegex = /^[\s]*[-*+]\s+(.*)$/gm;
+        let matches = [];
+        let match;
+
+        while ((match = listRegex.exec(content)) !== null) {
+            matches.push({
+                fullMatch: match[0],
+                content: match[1],
+                index: match.index
+            });
+        }
+
+        if (matches.length === 0) {
+            return content;
+        }
+
+        // Group consecutive list items
+        let result = content;
+        let offset = 0;
+        let i = 0;
+
+        while (i < matches.length) {
+            let listItems = [matches[i]];
+            let j = i + 1;
+
+            // Find consecutive list items
+            while (j < matches.length) {
+                const currentEnd = matches[j - 1].index + matches[j - 1].fullMatch.length;
+                const nextStart = matches[j].index;
+                const betweenContent = content.substring(currentEnd, nextStart);
+
+                // If there's only whitespace/newlines between items, they're part of the same list
+                if (betweenContent.match(/^\s*$/)) {
+                    listItems.push(matches[j]);
+                    j++;
+                } else {
+                    break;
+                }
+            }
+
+            // Create the list HTML
+            const listHtml = '<ul>' +
+                listItems.map(item => `<li>${item.content}</li>`).join('') +
+                '</ul>';
+
+            // Replace the original list items with the HTML list
+            const firstItem = listItems[0];
+            const lastItem = listItems[listItems.length - 1];
+            const startIndex = firstItem.index + offset;
+            const endIndex = lastItem.index + lastItem.fullMatch.length + offset;
+
+            result = result.substring(0, startIndex) + listHtml + result.substring(endIndex);
+            offset += listHtml.length - (endIndex - startIndex);
+
+            i = j;
+        }
+
+        return result;
+    }
+
+    /**
+     * Process ordered lists (1., 2., etc.)
+     */
+    processOrderedLists(content) {
+        // Match lines that start with number followed by period and space
+        const listRegex = /^[\s]*(\d+)\.\s+(.*)$/gm;
+        let matches = [];
+        let match;
+
+        while ((match = listRegex.exec(content)) !== null) {
+            matches.push({
+                fullMatch: match[0],
+                number: parseInt(match[1]),
+                content: match[2],
+                index: match.index
+            });
+        }
+
+        if (matches.length === 0) {
+            return content;
+        }
+
+        // Group consecutive list items
+        let result = content;
+        let offset = 0;
+        let i = 0;
+
+        while (i < matches.length) {
+            let listItems = [matches[i]];
+            let j = i + 1;
+
+            // Find consecutive list items
+            while (j < matches.length) {
+                const currentEnd = matches[j - 1].index + matches[j - 1].fullMatch.length;
+                const nextStart = matches[j].index;
+                const betweenContent = content.substring(currentEnd, nextStart);
+
+                // If there's only whitespace/newlines between items, they're part of the same list
+                if (betweenContent.match(/^\s*$/)) {
+                    listItems.push(matches[j]);
+                    j++;
+                } else {
+                    break;
+                }
+            }
+
+            // Create the list HTML
+            const listHtml = '<ol>' +
+                listItems.map(item => `<li>${item.content}</li>`).join('') +
+                '</ol>';
+
+            // Replace the original list items with the HTML list
+            const firstItem = listItems[0];
+            const lastItem = listItems[listItems.length - 1];
+            const startIndex = firstItem.index + offset;
+            const endIndex = lastItem.index + lastItem.fullMatch.length + offset;
+
+            result = result.substring(0, startIndex) + listHtml + result.substring(endIndex);
+            offset += listHtml.length - (endIndex - startIndex);
+
+            i = j;
+        }
+
+        return result;
     }
 
     /**
