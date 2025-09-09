@@ -1,10 +1,13 @@
 """Tests for WebSocket functionality."""
 
 import json
+from datetime import datetime, timezone
 from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
+
+from makemyrecipe.models.chat import WebSocketMessage
 
 
 def test_websocket_connection(client: TestClient) -> None:
@@ -160,3 +163,49 @@ def test_websocket_nonexistent_conversation(client: TestClient) -> None:
         error_msg = json.loads(data)
         assert error_msg["type"] == "error"
         assert "Conversation not found" in error_msg["data"]["error"]
+
+
+def test_websocket_message_datetime_serialization() -> None:
+    """Test that WebSocketMessage with datetime can be serialized to JSON."""
+    # Create a WebSocketMessage with a datetime timestamp
+    message = WebSocketMessage(
+        type="test",
+        data={"message": "test message"},
+        timestamp=datetime.now(timezone.utc),
+    )
+
+    # This should not raise a JSON serialization error
+    json_str = message.model_dump_json()
+
+    # Verify the JSON can be parsed back
+    parsed = json.loads(json_str)
+    assert parsed["type"] == "test"
+    assert parsed["data"]["message"] == "test message"
+    assert "timestamp" in parsed
+
+    # Verify timestamp is in ISO format
+    timestamp_str = parsed["timestamp"]
+    # Should be able to parse back to datetime
+    parsed_timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+    assert parsed_timestamp.tzinfo is not None
+
+
+def test_websocket_connection_receives_valid_json(client: TestClient) -> None:
+    """Test WebSocket connection receives valid JSON with datetime serialization."""
+    with client.websocket_connect("/ws/chat/test_user") as websocket:
+        # Should receive welcome message with valid JSON
+        data = websocket.receive_text()
+
+        # This should not raise a JSON decode error
+        message = json.loads(data)
+
+        assert message["type"] == "status"
+        assert "Connected to MakeMyRecipe chat" in message["data"]["message"]
+        assert message["data"]["user_id"] == "test_user"
+
+        # Verify timestamp is present and properly formatted
+        assert "timestamp" in message
+        timestamp_str = message["timestamp"]
+        # Should be able to parse the timestamp
+        parsed_timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        assert parsed_timestamp.tzinfo is not None
